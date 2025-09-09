@@ -1,9 +1,8 @@
 
-# Product Information
-
+# 8X16 RGB Matrix WS28B20 RGB 
 ## Overview
 
-This template provides a structured starting point for documenting hardware modules or products. It includes sections for product overview, features, typical use cases, resources, and documentation links. Customize each section to match your specific product details, ensuring clear and consistent information for users and developers.
+The matrix 8x16 RGB with ws28b20 is a compact and versatile LED display module designed for vibrant visual effects and animations. It features a grid of 128 individually addressable RGB LEDs, allowing for dynamic color patterns and lighting effects. The module is ideal for applications such as digital signage, decorative lighting, and interactive displays.
 
 <div align="center">
   <a href="#"><img src="https://img.shields.io/badge/version-1.0-blue.svg" alt="Version"></a>
@@ -22,22 +21,27 @@ This template provides a structured starting point for documenting hardware modu
 
 | Resource | Link |
 |:--------:|:----:|
-| FT24C32A Datasheet | [Link](../../docs/) |
+| Schematic | [hardware/schematic.pdf](hardware/schematic.pdf) |
 
-## Features
+## Key Features
 
-- 32Kbit FT24C32A I2C EEPROM for dependable non-volatile memory storage
-- Standard I2C (2-wire) interface for straightforward system integration
-- Broad operating voltage: 1.8V to 5.5V for flexible power compatibility
-- Supports fast I2C communication up to 400 kHz
+- 128 Individually Addressable RGB LEDs
+- JST SH 1mm 4-Pin Connector
+- Compact 8x16 Grid Layout or two 8x8 matrices
+- Supports WS2812B Protocol
+- Wide Operating Voltage Range: 3.3V to 5V
+
 
 ## Typical Applications
 
 | Application              | Description                                         |
 |--------------------------|-----------------------------------------------------|
-| Data logging             | Store sensor data, logs, or event histories         |
-| Configuration retention  | Preserve device settings or calibration data        |
-| Embedded memory          | Add persistent storage to microcontroller projects  |
+| Digital Signage          | Create dynamic signs and displays with vibrant colors. |
+| Decorative Lighting      | Enhance environments with customizable lighting effects. |
+| Interactive Displays     | Engage users with interactive LED patterns and animations. |
+| Wearable Tech            | Integrate into clothing or accessories for eye-catching designs. |
+| Art Installations        | Use in art projects to add visual interest and interactivity. |
+
 
 
 ## Getting Started
