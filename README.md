@@ -1,5 +1,5 @@
 
-# 8X16 RGB Matrix WS28B20 RGB 
+# 8X16  Matrix WS28B20 RGB 
 ## Overview
 
 The matrix 8x16 RGB with ws28b20 is a compact and versatile LED display module designed for vibrant visual effects and animations. It features a grid of 128 individually addressable RGB LEDs, allowing for dynamic color patterns and lighting effects. The module is ideal for applications such as digital signage, decorative lighting, and interactive displays.
