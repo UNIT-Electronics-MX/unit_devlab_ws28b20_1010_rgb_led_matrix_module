@@ -4,7 +4,7 @@
 <a href="./unit_sch_v_1_0_0_ue0112_ws28b20_matrix_rgb_8x16.pdf"><img src="resources/Schematics_icon.jpg?raw=false" width="200px"><br/>Schematic</a>
 </div>
 
-## 🔌 Pinout
+## Pinout
 
 <div align="center">
     <a href="#"><img src="resources/unit_pinout_v_0_0_1_ue0094_icp10111_barometric_pressure_sensor_en.jpg" width="500px"><br/>Pinout</a>
@@ -20,13 +20,13 @@
 
 </div>
 
-## 📏 Dimensions
+## Dimensions
 
 <div align="center">
 <a href="./resources/unit_dimension_v_1_0_0_ue0112_ws28b20_matrix_rgb_8x16.png"><img src="./resources/unit_dimension_v_1_0_0_ue0112_ws28b20_matrix_rgb_8x16.png" width="500px"><br/> Dimensions</a>
 </div>
 
-## 📃 Topology
+## Topology
 
 <div align="center">
 
