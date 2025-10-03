@@ -23,6 +23,8 @@ The matrix 8x16 RGB with ws28b20 is a compact and versatile LED display module d
   <p><em>8X16 Matrix WS28B20 RGB</em></p>
 </div>
 
+<div align="center">
+
 ### Quick Setup
 
 
