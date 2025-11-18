@@ -46,7 +46,7 @@ The matrix 8x16 RGB with ws28b20 is a compact and versatile LED display module d
 | LED Type                     | WS28B20 RGB LEDs                   |
 | Matrix Size                  | 8x16 (128 LEDs)                    |
 | Control Interface            | Single-wire data input             |
-| Power Supply                 | 5V DC                              |
+| Power Supply                 | 3.3V-5V DC                         |
 | Communication Protocol       | Proprietary (WS28B20)              |
 
 </div>
