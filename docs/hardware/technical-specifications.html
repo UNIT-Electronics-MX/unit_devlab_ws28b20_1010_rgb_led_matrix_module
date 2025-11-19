@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Applications</title>
+        <title>Technical Specifications</title>
 
 
         <!-- Custom HTML head -->
@@ -175,22 +175,41 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="applications"><a class="header" href="#applications">Applications</a></h1>
-<p>{{applications_list}}</p>
-<h1 id="references"><a class="header" href="#references">References</a></h1>
-<ul>
-<li><a href="%7B%7Bdatasheet_url%7D%7D">{{datasheet_name}}</a></li>
-</ul>
+                        <h1 id="technical-specifications"><a class="header" href="#technical-specifications">Technical Specifications</a></h1>
+<h3 id="electrical-characteristics"><a class="header" href="#electrical-characteristics">Electrical Characteristics</a></h3>
+<p>Unless noted, all parameter values are measured for a single LED.</p>
+<div align="center">
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center"><strong>Parameter</strong></th><th style="text-align: center"><strong>Description</strong></th><th style="text-align: center"><strong>Min</strong></th><th style="text-align: center"><strong>Typ</strong></th><th style="text-align: center"><strong>Max</strong></th><th style="text-align: center"><strong>Unit</strong></th></tr></thead><tbody>
+<tr><td style="text-align: center">Vdd</td><td style="text-align: center">Input voltage to power on the module</td><td style="text-align: center">3.3</td><td style="text-align: center">-</td><td style="text-align: center">5.5</td><td style="text-align: center">V</td></tr>
+<tr><td style="text-align: center">Idd*</td><td style="text-align: center">Supply current (All LEDs at maximum power at 5V)</td><td style="text-align: center">-</td><td style="text-align: center">-</td><td style="text-align: center">2.56</td><td style="text-align: center">A</td></tr>
+<tr><td style="text-align: center"></td><td style="text-align: center">All LEDs at maximum power at 3.3V</td><td style="text-align: center">-</td><td style="text-align: center">-</td><td style="text-align: center">1.68</td><td style="text-align: center">A</td></tr>
+<tr><td style="text-align: center">Vdi</td><td style="text-align: center">Logic input Voltage</td><td style="text-align: center">-0.4</td><td style="text-align: center">-</td><td style="text-align: center">VDD+0.4</td><td style="text-align: center">V</td></tr>
+<tr><td style="text-align: center">Vih</td><td style="text-align: center">Input high threshold voltage</td><td style="text-align: center">2.8</td><td style="text-align: center">-</td><td style="text-align: center">-</td><td style="text-align: center">V</td></tr>
+<tr><td style="text-align: center">Vil</td><td style="text-align: center">Input Low threshold voltage</td><td style="text-align: center">-</td><td style="text-align: center">-</td><td style="text-align: center">1.6</td><td style="text-align: center">V</td></tr>
+<tr><td style="text-align: center">Loh</td><td style="text-align: center">DOUT output current</td><td style="text-align: center">-</td><td style="text-align: center">-35</td><td style="text-align: center">-</td><td style="text-align: center">mA</td></tr>
+<tr><td style="text-align: center">Lol</td><td style="text-align: center">DOUT current injection</td><td style="text-align: center">-</td><td style="text-align: center">35</td><td style="text-align: center">-</td><td style="text-align: center">mA</td></tr>
+<tr><td style="text-align: center">Fpwm</td><td style="text-align: center">Output PWM frequency</td><td style="text-align: center">-</td><td style="text-align: center">1</td><td style="text-align: center">-</td><td style="text-align: center">KHz</td></tr>
+<tr><td style="text-align: center">Iv</td><td style="text-align: center">Light Intensity Red</td><td style="text-align: center">-</td><td style="text-align: center">200</td><td style="text-align: center">-</td><td style="text-align: center">mcd</td></tr>
+<tr><td style="text-align: center"></td><td style="text-align: center">Light Intensity Green</td><td style="text-align: center">-</td><td style="text-align: center">800</td><td style="text-align: center">-</td><td style="text-align: center">mcd</td></tr>
+<tr><td style="text-align: center"></td><td style="text-align: center">Light Intensity Blue</td><td style="text-align: center">-</td><td style="text-align: center">300</td><td style="text-align: center">-</td><td style="text-align: center">mcd</td></tr>
+<tr><td style="text-align: center">λD</td><td style="text-align: center">Main Wavelength Red</td><td style="text-align: center">620</td><td style="text-align: center">-</td><td style="text-align: center">630</td><td style="text-align: center">nm</td></tr>
+<tr><td style="text-align: center"></td><td style="text-align: center">Main Wavelength Green</td><td style="text-align: center">520</td><td style="text-align: center">-</td><td style="text-align: center">530</td><td style="text-align: center">nm</td></tr>
+<tr><td style="text-align: center"></td><td style="text-align: center">Main Wavelength Blue</td><td style="text-align: center">465</td><td style="text-align: center">-</td><td style="text-align: center">475</td><td style="text-align: center">nm</td></tr>
+<tr><td style="text-align: center">2θ1/2</td><td style="text-align: center">Half light angle</td><td style="text-align: center">-</td><td style="text-align: center">120</td><td style="text-align: center">-</td><td style="text-align: center">Deg</td></tr>
+</tbody></table>
+</div></div>
+<p>*Note: When powering the LEDs at 5V, their temperature may rise above 100°C at higher power levels. It is strongly recommended to implement optimal thermal management or to limit the use of LEDs at high brightness.
+Also, be careful when powering via the JST connector; it is recommended to limit the operating current to less than 3A.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../hardware/functional-description.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../hardware/overview.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../software/getting-started.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../hardware/pinout.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -200,11 +219,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../hardware/functional-description.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../hardware/overview.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../software/getting-started.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../hardware/pinout.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
