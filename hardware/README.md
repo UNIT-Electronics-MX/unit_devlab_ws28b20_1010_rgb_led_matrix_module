@@ -1,7 +1,7 @@
 # Hardware
 
 <div align="center">
-<a href="./unit_sch_v_1_0_0_ue0112_ws28b20_matrix_rgb_8x16.pdf"><img src="resources/Schematics_icon.jpg?raw=false" width="200px"><br/>Schematic</a>
+<a href="./unit_sch_v_1_0_0_ue0112_ws28b20_matrix_rgb_8x16.pdf"><img src="resources/Schematics_icon.jpg?raw=false" width="300px"><br/>Schematic</a>
 </div>
 
 ## Technical Specifications
@@ -85,6 +85,3 @@ Also, be careful when powering via the JST connector; it is recommended to limit
 <div align="center">
 <a href="./resources/unit_dimension_v_1_0_0_ue0112_ws28b20_matrix_rgb_8x16.png"><img src="./resources/unit_dimension_v_1_0_0_ue0112_ws28b20_matrix_rgb_8x16.png" width="500px"><br/> Dimensions</a>
 </div>
-
-## References
-
