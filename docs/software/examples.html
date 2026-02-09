@@ -178,6 +178,29 @@
                         <h1 id="examples"><a class="header" href="#examples">Examples</a></h1>
 <h2 id="arduinoc-examples"><a class="header" href="#arduinoc-examples">Arduino/C++ Examples</a></h2>
 <p>The following examples demonstrate various features of this development board.</p>
+<h3 id="neo_esp_rgb_simple-neo_esp_rgb_simpleino"><a class="header" href="#neo_esp_rgb_simple-neo_esp_rgb_simpleino">neo_esp_rgb_simple: neo_esp_rgb_simple.ino</a></h3>
+<pre><code class="language-cpp">/*
+ * Ejemplo simple RGB para Matriz LED WS2812B 8x16
+ * UNIT ELECTRONICS - RGB LED Matrix Module
+ * 
+ * Este ejemplo muestra un ciclo continuo de colores RGB en toda la matriz
+ */
+
+#include &lt;Adafruit_NeoPixel.h&gt;
+
+// Configuración del hardware
+#define PIN        6        // Pin de datos de la matriz
+#define NUM_LEDS   128      // Total de LEDs (8x16 = 128)
+#define BRILLO     64       // Brillo (0-255)
+
+// Crear objeto NeoPixel
+Adafruit_NeoPixel strip(NUM_LEDS, PIN, NEO_GRB + NEO_KHZ800);
+
+void setup() {
+  // Inicializar la tira LED
+  strip.begin();
+</code></pre>
+<p><a href="https://github.com/UNIT-Electronics-MX/unit_devlab_ws28b20_1010_rgb_led_matrix_module/blob/main/software/examples/c/neo_esp_rgb_simple/neo_esp_rgb_simple.ino">See complete code on GitHub</a></p>
 <h3 id="neo_esp-neo_espino"><a class="header" href="#neo_esp-neo_espino">neo_esp: neo_esp.ino</a></h3>
 <pre><code class="language-cpp">#include &lt;Adafruit_NeoPixel.h&gt;
 
