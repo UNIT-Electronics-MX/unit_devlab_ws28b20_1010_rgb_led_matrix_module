@@ -39,7 +39,7 @@ Also, be careful when powering via the JST connector; it is recommended to limit
 ## Pinout
 
 <div align="center">
-    <a href="#"><img src="resources/unit_pinout_v_0_0_1_ue0094_icp10111_barometric_pressure_sensor_en.jpg" width="500px"><br/>Pinout</a>
+    <a href="./unit_pinout_v_1_0_0_ue00112_WS28B20_matrix_en.pdf"><img src="resources/unit_pinout_v_1_0_0_ue00112_WS28B20_matrix_en.png" width="500px"><br/>Pinout</a>
     <br/>
     <br/>
     <br/>
