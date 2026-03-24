@@ -1,0 +1,1728 @@
+/*
+ * ============================================================
+ * NEO TALENT LAND - Demostraciones Visuales Impactantes
+ * UNIT ELECTRONICS - WS2812B 8x80 RGB LED Matrix Module
+ * ============================================================
+ * 
+ * Efectos incluidos:
+ *   1. Matrix Rain (Lluvia estilo Matrix)
+ *   2. Plasma Effect (Plasma colorido)
+ *   3. Fire Effect (Fuego realista)
+ *   4. Shooting Stars (Estrellas fugaces multicolor)
+ *   5. Hypnotic Spiral (Espiral hipnótica)
+ *   6. Beating Heart (Corazón latiendo)
+ *   7. DNA Helix (Doble hélice de ADN)
+ *   8. Pulse Wave (Onda de pulso)
+ *   9. VU Meter (Barras de audio)
+ *  10. Tetris Rain (Piezas de Tetris cayendo)
+ *  11. Cylon Scanner (Ojo Cylon barrido)
+ *  12. Confetti Burst (Explosión de confeti)
+ *  13. Lava Lamp (Lámpara de lava)
+ *  14. Lightning Storm (Tormenta eléctrica)
+ *  15. Rainbow Wave (Onda arcoíris)
+ *  16. Fireworks Show (Fuegos artificiales mejorados)
+ *  17. Mexican Flag Wave (Bandera mexicana ondeando)
+ *  18. Scrolling Messages (Mensajes UNIT / TALENT LAND)
+ * 
+ * Para: Talent Land 2026 - UNIT Electronics
+ * ============================================================
+ */
+
+#include <Adafruit_NeoPixel.h>
+
+// ============ CONFIGURACIÓN DE HARDWARE ============
+#define PIN           12
+#define NUM_LEDS      640
+#define MATRIX_WIDTH  8
+#define MATRIX_HEIGHT 80
+#define BRILLO_GENERAL 100  // 0-255 (ajustar según ambiente)
+
+Adafruit_NeoPixel strip(NUM_LEDS, PIN, NEO_GRB + NEO_KHZ800);
+
+// ============ TABLAS TRIGONOMÉTRICAS (sin/cos x256) ============
+// Precalculadas para velocidad máxima en microcontroladores
+const int8_t sinTable[] PROGMEM = {
+  0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,59,62,65,67,
+  70,73,75,78,80,82,85,87,89,91,94,96,98,100,102,103,105,107,108,110,
+  112,113,114,116,117,118,119,120,121,122,123,124,124,125,126,126,127,
+  127,127,127,127,127,127,127,127,127,126,126,125,124,124,123,122,121,
+  120,119,118,117,116,114,113,112,110,108,107,105,103,102,100,98,96,94,
+  91,89,87,85,82,80,78,75,73,70,67,65,62,59,57,54,51,48,45,42,39,36,
+  33,30,27,24,21,18,15,12,9,6,3,0,-3,-6,-9,-12,-15,-18,-21,-24,-27,-30,
+  -33,-36,-39,-42,-45,-48,-51,-54,-57,-59,-62,-65,-67,-70,-73,-75,-78,
+  -80,-82,-85,-87,-89,-91,-94,-96,-98,-100,-102,-103,-105,-107,-108,-110,
+  -112,-113,-114,-116,-117,-118,-119,-120,-121,-122,-123,-124,-124,-125,
+  -126,-126,-127,-127,-127,-127,-127,-127,-127,-127,-127,-127,-126,-126,
+  -125,-124,-124,-123,-122,-121,-120,-119,-118,-117,-116,-114,-113,-112,
+  -110,-108,-107,-105,-103,-102,-100,-98,-96,-94,-91,-89,-87,-85,-82,-80,
+  -78,-75,-73,-70,-67,-65,-62,-59,-57,-54,-51,-48,-45,-42,-39,-36,-33,
+  -30,-27,-24,-21,-18,-15,-12,-9,-6,-3
+};
+
+int8_t fastSin(uint8_t angle) { return pgm_read_byte(&sinTable[angle]); }
+int8_t fastCos(uint8_t angle) { return pgm_read_byte(&sinTable[(angle + 64) & 255]); }
+
+// ============ FUNCIÓN ESCALADO DE COLOR ============
+uint32_t escalarColor(uint8_t r, uint8_t g, uint8_t b) {
+  return strip.Color(
+    (r * BRILLO_GENERAL) / 255,
+    (g * BRILLO_GENERAL) / 255,
+    (b * BRILLO_GENERAL) / 255
+  );
+}
+
+uint32_t escalarColor32(uint32_t color) {
+  uint8_t r = (color >> 16) & 0xFF;
+  uint8_t g = (color >> 8) & 0xFF;
+  uint8_t b = color & 0xFF;
+  return escalarColor(r, g, b);
+}
+
+// ============ FUNCIÓN PIXEL INDEX ============
+int getPixelIndex(int x, int y) {
+  if (x < 0 || x >= MATRIX_WIDTH || y < 0 || y >= MATRIX_HEIGHT) return -1;
+  return y * MATRIX_WIDTH + x;
+}
+
+void setPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+  int idx = getPixelIndex(x, y);
+  if (idx >= 0) strip.setPixelColor(idx, escalarColor(r, g, b));
+}
+
+void setPixelRaw(int x, int y, uint32_t color) {
+  int idx = getPixelIndex(x, y);
+  if (idx >= 0) strip.setPixelColor(idx, color);
+}
+
+// ============ HSV a RGB rápido ============
+uint32_t hsvToRgb(uint8_t h, uint8_t s, uint8_t v) {
+  uint8_t region = h / 43;
+  uint8_t remainder = (h - (region * 43)) * 6;
+  uint8_t p = (v * (255 - s)) >> 8;
+  uint8_t q = (v * (255 - ((s * remainder) >> 8))) >> 8;
+  uint8_t t = (v * (255 - ((s * (255 - remainder)) >> 8))) >> 8;
+
+  switch (region) {
+    case 0:  return escalarColor(v, t, p);
+    case 1:  return escalarColor(q, v, p);
+    case 2:  return escalarColor(p, v, t);
+    case 3:  return escalarColor(p, q, v);
+    case 4:  return escalarColor(t, p, v);
+    default: return escalarColor(v, p, q);
+  }
+}
+
+// ============ FUENTE 5x8 ============
+const uint8_t font5x8[][5] = {
+  {0x00,0x00,0x00,0x00,0x00}, // 32: Espacio
+  {0x00,0x00,0x5F,0x00,0x00}, // 33: !
+  {0x00,0x07,0x00,0x07,0x00}, // 34: "
+  {0x14,0x7F,0x14,0x7F,0x14}, // 35: #
+  {0x24,0x2A,0x7F,0x2A,0x12}, // 36: $
+  {0x23,0x13,0x08,0x64,0x62}, // 37: %
+  {0x36,0x49,0x55,0x22,0x50}, // 38: &
+  {0x00,0x05,0x03,0x00,0x00}, // 39: '
+  {0x00,0x1C,0x22,0x41,0x00}, // 40: (
+  {0x00,0x41,0x22,0x1C,0x00}, // 41: )
+  {0x14,0x08,0x3E,0x08,0x14}, // 42: *
+  {0x08,0x08,0x3E,0x08,0x08}, // 43: +
+  {0x00,0x50,0x30,0x00,0x00}, // 44: ,
+  {0x08,0x08,0x08,0x08,0x08}, // 45: -
+  {0x00,0x60,0x60,0x00,0x00}, // 46: .
+  {0x20,0x10,0x08,0x04,0x02}, // 47: /
+  {0x3E,0x51,0x49,0x45,0x3E}, // 48: 0
+  {0x00,0x42,0x7F,0x40,0x00}, // 49: 1
+  {0x42,0x61,0x51,0x49,0x46}, // 50: 2
+  {0x21,0x41,0x45,0x4B,0x31}, // 51: 3
+  {0x18,0x14,0x12,0x7F,0x10}, // 52: 4
+  {0x27,0x45,0x45,0x45,0x39}, // 53: 5
+  {0x3C,0x4A,0x49,0x49,0x30}, // 54: 6
+  {0x01,0x71,0x09,0x05,0x03}, // 55: 7
+  {0x36,0x49,0x49,0x49,0x36}, // 56: 8
+  {0x06,0x49,0x49,0x29,0x1E}, // 57: 9
+  {0x00,0x36,0x36,0x00,0x00}, // 58: :
+  {0x00,0x56,0x36,0x00,0x00}, // 59: ;
+  {0x08,0x14,0x22,0x41,0x00}, // 60: <
+  {0x14,0x14,0x14,0x14,0x14}, // 61: =
+  {0x00,0x41,0x22,0x14,0x08}, // 62: >
+  {0x02,0x01,0x51,0x09,0x06}, // 63: ?
+  {0x32,0x49,0x79,0x41,0x3E}, // 64: @
+  {0x7E,0x11,0x11,0x11,0x7E}, // 65: A
+  {0x7F,0x49,0x49,0x49,0x36}, // 66: B
+  {0x3E,0x41,0x41,0x41,0x22}, // 67: C
+  {0x7F,0x41,0x41,0x22,0x1C}, // 68: D
+  {0x7F,0x49,0x49,0x49,0x41}, // 69: E
+  {0x7F,0x09,0x09,0x09,0x01}, // 70: F
+  {0x3E,0x41,0x49,0x49,0x7A}, // 71: G
+  {0x7F,0x08,0x08,0x08,0x7F}, // 72: H
+  {0x00,0x41,0x7F,0x41,0x00}, // 73: I
+  {0x20,0x40,0x41,0x3F,0x01}, // 74: J
+  {0x7F,0x08,0x14,0x22,0x41}, // 75: K
+  {0x7F,0x40,0x40,0x40,0x40}, // 76: L
+  {0x7F,0x02,0x0C,0x02,0x7F}, // 77: M
+  {0x7F,0x04,0x08,0x10,0x7F}, // 78: N
+  {0x3E,0x41,0x41,0x41,0x3E}, // 79: O
+  {0x7F,0x09,0x09,0x09,0x06}, // 80: P
+  {0x3E,0x41,0x51,0x21,0x5E}, // 81: Q
+  {0x7F,0x09,0x19,0x29,0x46}, // 82: R
+  {0x46,0x49,0x49,0x49,0x31}, // 83: S
+  {0x01,0x01,0x7F,0x01,0x01}, // 84: T
+  {0x3F,0x40,0x40,0x40,0x3F}, // 85: U
+  {0x1F,0x20,0x40,0x20,0x1F}, // 86: V
+  {0x3F,0x40,0x38,0x40,0x3F}, // 87: W
+  {0x63,0x14,0x08,0x14,0x63}, // 88: X
+  {0x07,0x08,0x70,0x08,0x07}, // 89: Y
+  {0x61,0x51,0x49,0x45,0x43}  // 90: Z
+};
+
+int getCharIndex(char c) {
+  if (c >= 32 && c <= 90) return c - 32;
+  if (c >= 97 && c <= 122) return (c - 97) + (65 - 32);
+  return 0;
+}
+
+void displayChar(char c, int offsetX, int offsetY, uint32_t color) {
+  int ci = getCharIndex(c);
+  for (int col = 0; col < 5; col++) {
+    uint8_t columnData = font5x8[ci][4 - col];
+    for (int row = 0; row < 8; row++) {
+      if (columnData & (1 << row)) {
+        int px = offsetX + row;
+        int py = offsetY + col;
+        int idx = getPixelIndex(px, py);
+        if (idx >= 0 && idx < NUM_LEDS) strip.setPixelColor(idx, color);
+      }
+    }
+  }
+}
+
+String reverseString(String text) {
+  String r = "";
+  for (int i = text.length() - 1; i >= 0; i--) r += text[i];
+  return r;
+}
+
+void scrollText(String text, uint32_t color, int delayTime) {
+  int textLen = text.length() * 6;
+  for (int offset = -textLen; offset < MATRIX_HEIGHT + 5; offset++) {
+    strip.clear();
+    for (int i = 0; i < (int)text.length(); i++) {
+      int charY = offset + (i * 6);
+      if (charY >= -5 && charY < MATRIX_HEIGHT + 5) {
+        displayChar(text[i], 0, charY, color);
+      }
+    }
+    strip.show();
+    delay(delayTime);
+  }
+}
+
+void rainbowScrollText(String text, int delayTime) {
+  int textLen = text.length() * 6;
+  uint16_t hue = 0;
+  for (int offset = -textLen; offset < MATRIX_HEIGHT + 5; offset++) {
+    strip.clear();
+    for (int i = 0; i < (int)text.length(); i++) {
+      int charY = offset + (i * 6);
+      if (charY >= -5 && charY < MATRIX_HEIGHT + 5) {
+        uint32_t color = escalarColor32(strip.gamma32(
+          strip.ColorHSV((hue + i * 65536 / text.length()) % 65536)));
+        displayChar(text[i], 0, charY, color);
+      }
+    }
+    strip.show();
+    delay(delayTime);
+    hue += 512;
+  }
+}
+
+// ================================================================
+//  1. MATRIX RAIN - Lluvia estilo Matrix (verde sobre negro)
+// ================================================================
+void matrixRain(int duration) {
+  #define MAX_DROPS 20
+  int dropX[MAX_DROPS], dropY[MAX_DROPS], dropSpeed[MAX_DROPS], dropLen[MAX_DROPS];
+  
+  // Inicializar gotas
+  for (int i = 0; i < MAX_DROPS; i++) {
+    dropX[i] = random(0, MATRIX_WIDTH);
+    dropY[i] = random(-MATRIX_HEIGHT, 0);
+    dropSpeed[i] = random(1, 4);
+    dropLen[i] = random(4, 15);
+  }
+  
+  for (int frame = 0; frame < duration; frame++) {
+    // Atenuar todo el framebuffer (efecto estela)
+    for (int i = 0; i < NUM_LEDS; i++) {
+      uint32_t c = strip.getPixelColor(i);
+      uint8_t r = ((c >> 16) & 0xFF) * 7 / 10;
+      uint8_t g = ((c >> 8) & 0xFF) * 7 / 10;
+      uint8_t b = (c & 0xFF) * 7 / 10;
+      strip.setPixelColor(i, strip.Color(r, g, b));
+    }
+    
+    for (int i = 0; i < MAX_DROPS; i++) {
+      // Dibujar la gota con gradiente
+      for (int t = 0; t < dropLen[i]; t++) {
+        int py = dropY[i] - t;
+        if (py >= 0 && py < MATRIX_HEIGHT) {
+          int intensity = 255 - (t * 255 / dropLen[i]);
+          if (t == 0) {
+            setPixel(dropX[i], py, 200, 255, 200); // Cabeza brillante
+          } else {
+            setPixel(dropX[i], py, 0, intensity, 0); // Cola verde
+          }
+        }
+      }
+      
+      // Mover gota
+      dropY[i] += dropSpeed[i];
+      
+      // Reiniciar si sale de pantalla
+      if (dropY[i] - dropLen[i] > MATRIX_HEIGHT) {
+        dropX[i] = random(0, MATRIX_WIDTH);
+        dropY[i] = random(-20, -2);
+        dropSpeed[i] = random(1, 4);
+        dropLen[i] = random(4, 15);
+      }
+    }
+    
+    strip.show();
+    delay(30);
+  }
+}
+
+// ================================================================
+//  2. PLASMA EFFECT - Efecto plasma psicodélico
+// ================================================================
+void plasmaEffect(int duration) {
+  for (int frame = 0; frame < duration; frame++) {
+    for (int y = 0; y < MATRIX_HEIGHT; y++) {
+      for (int x = 0; x < MATRIX_WIDTH; x++) {
+        // Combinar múltiples ondas sinusoidales
+        uint8_t angle1 = (uint8_t)(x * 32 + frame * 3);
+        uint8_t angle2 = (uint8_t)(y * 20 + frame * 2);
+        uint8_t angle3 = (uint8_t)((x + y) * 16 + frame * 4);
+        uint8_t angle4 = (uint8_t)((x - y + 80) * 24 + frame * 5);
+        
+        int v = fastSin(angle1) + fastSin(angle2) + fastSin(angle3) + fastSin(angle4);
+        uint8_t hue = (uint8_t)((v + 512) / 4); // Normalizar a 0-255
+        
+        setPixelRaw(x, y, hsvToRgb(hue, 255, 200));
+      }
+    }
+    strip.show();
+    delay(15);
+  }
+}
+
+// ================================================================
+//  3. FIRE EFFECT - Fuego realista (paleta de calor)
+// ================================================================
+void fireEffect(int duration) {
+  uint8_t heat[MATRIX_WIDTH][MATRIX_HEIGHT];
+  memset(heat, 0, sizeof(heat));
+  
+  for (int frame = 0; frame < duration; frame++) {
+    // Enfriar cada celda
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      for (int y = 0; y < MATRIX_HEIGHT; y++) {
+        int cooldown = random(0, 3);
+        heat[x][y] = (heat[x][y] > cooldown) ? heat[x][y] - cooldown : 0;
+      }
+    }
+    
+    // Propagar calor hacia arriba (en la matriz, "arriba" = Y decrece)
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      for (int y = 0; y < MATRIX_HEIGHT - 1; y++) {
+        int nx = x + random(-1, 2);
+        if (nx < 0) nx = 0;
+        if (nx >= MATRIX_WIDTH) nx = MATRIX_WIDTH - 1;
+        heat[x][y] = (heat[nx][y + 1] + heat[x][y + 1] + heat[x][y]) / 3;
+      }
+    }
+    
+    // Encender nuevas chispas en la base (últimas filas)
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      if (random(0, 4) == 0) {
+        int y = MATRIX_HEIGHT - 1 - random(0, 3);
+        if (y >= 0) heat[x][y] = min(255, (int)(heat[x][y] + random(160, 256)));
+      }
+    }
+    
+    // Renderizar con paleta de fuego
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      for (int y = 0; y < MATRIX_HEIGHT; y++) {
+        uint8_t h = heat[x][y];
+        uint8_t r, g, b;
+        if (h < 85) {
+          r = h * 3; g = 0; b = 0;                    // Negro → Rojo
+        } else if (h < 170) {
+          r = 255; g = (h - 85) * 3; b = 0;           // Rojo → Amarillo
+        } else {
+          r = 255; g = 255; b = (h - 170) * 3;        // Amarillo → Blanco
+        }
+        setPixel(x, y, r, g, b);
+      }
+    }
+    
+    strip.show();
+    delay(25);
+  }
+}
+
+// ================================================================
+//  4. SHOOTING STARS - Estrellas fugaces multicolor
+// ================================================================
+void shootingStars(int duration) {
+  #define MAX_STARS 10
+  float starX[MAX_STARS], starY[MAX_STARS];
+  float starDX[MAX_STARS], starDY[MAX_STARS];
+  uint8_t starHue[MAX_STARS];
+  int starLen[MAX_STARS];
+  bool starActive[MAX_STARS];
+  
+  for (int i = 0; i < MAX_STARS; i++) starActive[i] = false;
+  
+  for (int frame = 0; frame < duration; frame++) {
+    // Atenuar
+    for (int i = 0; i < NUM_LEDS; i++) {
+      uint32_t c = strip.getPixelColor(i);
+      uint8_t r = ((c >> 16) & 0xFF) * 6 / 10;
+      uint8_t g = ((c >> 8) & 0xFF) * 6 / 10;
+      uint8_t b = (c & 0xFF) * 6 / 10;
+      strip.setPixelColor(i, strip.Color(r, g, b));
+    }
+    
+    // Lanzar nuevas estrellas
+    for (int i = 0; i < MAX_STARS; i++) {
+      if (!starActive[i] && random(0, 8) == 0) {
+        starActive[i] = true;
+        starHue[i] = random(0, 256);
+        starLen[i] = random(3, 8);
+        
+        int dir = random(0, 4);
+        switch (dir) {
+          case 0: // Diagonal arriba-izq a abajo-der
+            starX[i] = 0; starY[i] = random(0, MATRIX_HEIGHT / 2);
+            starDX[i] = 0.8; starDY[i] = 1.5;
+            break;
+          case 1: // Diagonal arriba-der a abajo-izq
+            starX[i] = MATRIX_WIDTH - 1; starY[i] = random(0, MATRIX_HEIGHT / 2);
+            starDX[i] = -0.8; starDY[i] = 1.5;
+            break;
+          case 2: // Vertical hacia abajo
+            starX[i] = random(0, MATRIX_WIDTH); starY[i] = 0;
+            starDX[i] = 0; starDY[i] = 2.0;
+            break;
+          case 3: // Vertical hacia arriba
+            starX[i] = random(0, MATRIX_WIDTH); starY[i] = MATRIX_HEIGHT - 1;
+            starDX[i] = 0; starDY[i] = -2.0;
+            break;
+        }
+      }
+    }
+    
+    // Dibujar y mover estrellas
+    for (int i = 0; i < MAX_STARS; i++) {
+      if (starActive[i]) {
+        // Cabeza brillante
+        int sx = (int)starX[i], sy = (int)starY[i];
+        if (sx >= 0 && sx < MATRIX_WIDTH && sy >= 0 && sy < MATRIX_HEIGHT) {
+          setPixelRaw(sx, sy, hsvToRgb(starHue[i], 100, 255)); // Casi blanco
+        }
+        
+        // Estela
+        for (int t = 1; t < starLen[i]; t++) {
+          int tx = (int)(starX[i] - starDX[i] * t);
+          int ty = (int)(starY[i] - starDY[i] * t);
+          if (tx >= 0 && tx < MATRIX_WIDTH && ty >= 0 && ty < MATRIX_HEIGHT) {
+            uint8_t bright = 200 - t * (200 / starLen[i]);
+            setPixelRaw(tx, ty, hsvToRgb(starHue[i], 255, bright));
+          }
+        }
+        
+        starX[i] += starDX[i];
+        starY[i] += starDY[i];
+        
+        if (starX[i] < -5 || starX[i] > MATRIX_WIDTH + 5 ||
+            starY[i] < -5 || starY[i] > MATRIX_HEIGHT + 5) {
+          starActive[i] = false;
+        }
+      }
+    }
+    
+    strip.show();
+    delay(20);
+  }
+}
+
+// ================================================================
+//  5. HYPNOTIC SPIRAL - Espiral hipnótica rotante
+// ================================================================
+void hypnoticSpiral(int duration) {
+  int centerX = MATRIX_WIDTH / 2;
+  int centerY = MATRIX_HEIGHT / 2;
+  
+  for (int frame = 0; frame < duration; frame++) {
+    for (int y = 0; y < MATRIX_HEIGHT; y++) {
+      for (int x = 0; x < MATRIX_WIDTH; x++) {
+        // Calcular ángulo y distancia al centro
+        int dx = x - centerX;
+        int dy = y - centerY;
+        
+        // Ángulo aproximado + distancia para crear espiral
+        int angle = (int)(atan2(dy, dx) * 40.74); // ~256/(2*PI)
+        int dist = (int)(sqrt(dx * dx + dy * dy) * 12);
+        
+        uint8_t hue = (uint8_t)(angle + dist - frame * 4);
+        uint8_t bright = 180 + (fastSin((uint8_t)(dist + frame * 2)) / 2);
+        
+        setPixelRaw(x, y, hsvToRgb(hue, 255, bright));
+      }
+    }
+    strip.show();
+    delay(20);
+  }
+}
+
+// ================================================================
+//  6. BEATING HEART - Corazón latiendo (8x8 bitmap escalado)
+// ================================================================
+// Bitmap del corazón 8x7
+const uint8_t heartBitmap[7] = {
+  0b01101100,
+  0b11111110,
+  0b11111110,
+  0b11111110,
+  0b01111100,
+  0b00111000,
+  0b00010000
+};
+
+void beatingHeart(int beats) {
+  for (int beat = 0; beat < beats; beat++) {
+    // Sístole (contracción - corazón grande, brillante)
+    for (int phase = 0; phase < 20; phase++) {
+      strip.clear();
+      uint8_t brightness = 150 + (phase < 10 ? phase * 10 : (20 - phase) * 10);
+      float scale = 1.0 + (phase < 10 ? phase * 0.02 : (20 - phase) * 0.02);
+      
+      // Dibujar múltiples corazones a lo largo de la tira
+      for (int rep = 0; rep < 8; rep++) {
+        int baseY = rep * 10 + 1;
+        for (int row = 0; row < 7; row++) {
+          for (int col = 0; col < 8; col++) {
+            if (heartBitmap[row] & (1 << (7 - col))) {
+              int px = (int)((col - 4) * scale + 4);
+              int py = (int)((row - 3) * scale + 3) + baseY;
+              if (px >= 0 && px < MATRIX_WIDTH && py >= 0 && py < MATRIX_HEIGHT) {
+                // Color rojo pulsante con brillo exterior rosa
+                uint8_t r = brightness;
+                uint8_t g = phase < 10 ? 0 : (phase - 10) * 5;
+                uint8_t b = phase < 10 ? 0 : (phase - 10) * 8;
+                setPixel(px, py, r, g, b);
+              }
+            }
+          }
+        }
+      }
+      
+      strip.show();
+      delay(25);
+    }
+    
+    // Diástole (relajación - pausa breve)
+    delay(100);
+    
+    // Segundo latido rápido
+    for (int phase = 0; phase < 12; phase++) {
+      strip.clear();
+      uint8_t brightness = 100 + (phase < 6 ? phase * 25 : (12 - phase) * 25);
+      
+      for (int rep = 0; rep < 8; rep++) {
+        int baseY = rep * 10 + 1;
+        for (int row = 0; row < 7; row++) {
+          for (int col = 0; col < 8; col++) {
+            if (heartBitmap[row] & (1 << (7 - col))) {
+              int py = row + baseY;
+              if (col >= 0 && col < MATRIX_WIDTH && py >= 0 && py < MATRIX_HEIGHT) {
+                setPixel(col, py, brightness, 0, brightness / 4);
+              }
+            }
+          }
+        }
+      }
+      strip.show();
+      delay(20);
+    }
+    delay(300); // Pausa entre latidos
+  }
+}
+
+// ================================================================
+//  7. DNA HELIX - Doble hélice de ADN rotante
+// ================================================================
+void dnaHelix(int duration) {
+  for (int frame = 0; frame < duration; frame++) {
+    strip.clear();
+    
+    for (int y = 0; y < MATRIX_HEIGHT; y++) {
+      // Dos ondas senoidales desfasadas 180°
+      float angle = (y * 0.3 + frame * 0.15);
+      int x1 = (int)(3.5 + 3.0 * sin(angle));
+      int x2 = (int)(3.5 + 3.0 * sin(angle + 3.14159));
+      
+      // Profundidad para efecto 3D
+      float depth1 = cos(angle);
+      float depth2 = cos(angle + 3.14159);
+      
+      uint8_t bright1 = (uint8_t)(128 + 127 * depth1);
+      uint8_t bright2 = (uint8_t)(128 + 127 * depth2);
+      
+      // Cadena 1 (cian)
+      if (x1 >= 0 && x1 < MATRIX_WIDTH) {
+        setPixel(x1, y, 0, bright1, bright1);
+      }
+      // Cadena 2 (magenta)
+      if (x2 >= 0 && x2 < MATRIX_WIDTH) {
+        setPixel(x2, y, bright2, 0, bright2);
+      }
+      
+      // Barras de conexión (bases) cada 4 filas
+      if (y % 4 == (frame / 2) % 4) {
+        int minX = min(x1, x2);
+        int maxX = max(x1, x2);
+        for (int bx = minX; bx <= maxX; bx++) {
+          if (bx >= 0 && bx < MATRIX_WIDTH) {
+            // Color de las bases (amarillo/verde alternado)
+            if ((bx + y) % 2 == 0) {
+              setPixel(bx, y, 200, 200, 0);   // Amarillo
+            } else {
+              setPixel(bx, y, 0, 200, 100);   // Verde
+            }
+          }
+        }
+      }
+    }
+    
+    strip.show();
+    delay(30);
+  }
+}
+
+// ================================================================
+//  8. PULSE WAVE - Onda de pulso expandiéndose
+// ================================================================
+void pulseWave(int duration) {
+  for (int frame = 0; frame < duration; frame++) {
+    strip.clear();
+    
+    // Múltiples centros de pulso
+    int numPulses = 3;
+    int pulseCenter[] = {15, 40, 65};
+    
+    for (int p = 0; p < numPulses; p++) {
+      int center = pulseCenter[p];
+      int radius = (frame + p * 20) % 40;
+      uint8_t hue = (frame * 3 + p * 85) & 0xFF;
+      
+      for (int y = 0; y < MATRIX_HEIGHT; y++) {
+        for (int x = 0; x < MATRIX_WIDTH; x++) {
+          int dist = abs(y - center) + abs(x - MATRIX_WIDTH / 2);
+          int diff = abs(dist - radius);
+          
+          if (diff < 3) {
+            uint8_t bright = (3 - diff) * 85;
+            uint32_t existingColor = strip.getPixelColor(getPixelIndex(x, y));
+            uint32_t newColor = hsvToRgb(hue, 255, bright);
+            
+            // Mezclar colores (aditivo simple)
+            uint8_t er = (existingColor >> 16) & 0xFF;
+            uint8_t eg = (existingColor >> 8) & 0xFF;
+            uint8_t eb = existingColor & 0xFF;
+            uint8_t nr = (newColor >> 16) & 0xFF;
+            uint8_t ng = (newColor >> 8) & 0xFF;
+            uint8_t nb = newColor & 0xFF;
+            
+            strip.setPixelColor(getPixelIndex(x, y), strip.Color(
+              min(255, er + nr), min(255, eg + ng), min(255, eb + nb)));
+          }
+        }
+      }
+    }
+    
+    strip.show();
+    delay(30);
+  }
+}
+
+// ================================================================
+//  9. VU METER - Barras de audio simuladas
+// ================================================================
+void vuMeter(int duration) {
+  uint8_t levels[MATRIX_WIDTH];
+  uint8_t targets[MATRIX_WIDTH];
+  uint8_t peaks[MATRIX_WIDTH];
+  uint8_t peakDecay[MATRIX_WIDTH];
+  
+  for (int i = 0; i < MATRIX_WIDTH; i++) {
+    levels[i] = 0;
+    targets[i] = 0;
+    peaks[i] = 0;
+    peakDecay[i] = 0;
+  }
+  
+  for (int frame = 0; frame < duration; frame++) {
+    strip.clear();
+    
+    // Generar nuevos objetivos simulando audio (patron musical)
+    if (frame % 3 == 0) {
+      for (int i = 0; i < MATRIX_WIDTH; i++) {
+        // Simular un patrón musical con variación
+        int base = 20 + (int)(30 * sin(frame * 0.1 + i * 0.8));
+        targets[i] = min(MATRIX_HEIGHT - 1, max(5, (int)(base + random(-15, 15))));
+      }
+    }
+    
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      // Suavizar movimiento hacia el objetivo
+      if (levels[x] < targets[x]) levels[x] += 3;
+      else if (levels[x] > targets[x]) levels[x] -= 2;
+      
+      // Actualizar pico
+      if (levels[x] > peaks[x]) {
+        peaks[x] = levels[x];
+        peakDecay[x] = 0;
+      } else {
+        peakDecay[x]++;
+        if (peakDecay[x] > 8 && peaks[x] > 0) {
+          peaks[x]--;
+          peakDecay[x] = 6;
+        }
+      }
+      
+      // Dibujar barra desde abajo
+      for (int y = MATRIX_HEIGHT - 1; y >= (int)(MATRIX_HEIGHT - levels[x]); y--) {
+        int barHeight = MATRIX_HEIGHT - y;
+        float ratio = (float)barHeight / MATRIX_HEIGHT;
+        
+        if (ratio < 0.5) {
+          setPixel(x, y, 0, 255, 0);           // Verde (bajo)
+        } else if (ratio < 0.75) {
+          setPixel(x, y, 255, 255, 0);         // Amarillo (medio)
+        } else if (ratio < 0.9) {
+          setPixel(x, y, 255, 128, 0);         // Naranja (alto)
+        } else {
+          setPixel(x, y, 255, 0, 0);           // Rojo (pico)
+        }
+      }
+      
+      // Dibujar indicador de pico
+      int peakY = MATRIX_HEIGHT - peaks[x];
+      if (peakY >= 0 && peakY < MATRIX_HEIGHT) {
+        setPixel(x, peakY, 255, 255, 255); // Pico blanco
+      }
+    }
+    
+    strip.show();
+    delay(25);
+  }
+}
+
+// ================================================================
+// 10. TETRIS RAIN - Piezas de Tetris cayendo
+// ================================================================
+// Definición de piezas de Tetris (4 celdas cada una)
+struct TetrisPiece {
+  int8_t cells[4][2]; // {dx, dy} relativo al centro
+  uint8_t r, g, b;
+};
+
+const TetrisPiece tetrisPieces[] = {
+  {{{0,0},{1,0},{0,1},{1,1}}, 255, 255, 0},   // O - Amarillo
+  {{{0,0},{1,0},{2,0},{3,0}}, 0, 255, 255},    // I - Cian
+  {{{0,0},{1,0},{1,1},{2,1}}, 0, 255, 0},      // S - Verde
+  {{{1,0},{2,0},{0,1},{1,1}}, 255, 0, 0},      // Z - Rojo
+  {{{0,0},{0,1},{1,1},{2,1}}, 0, 0, 255},      // J - Azul
+  {{{2,0},{0,1},{1,1},{2,1}}, 255, 128, 0},    // L - Naranja
+  {{{1,0},{0,1},{1,1},{2,1}}, 128, 0, 255}     // T - Púrpura
+};
+
+void tetrisRain(int duration) {
+  #define MAX_PIECES 8
+  int pieceX[MAX_PIECES], pieceY[MAX_PIECES], pieceType[MAX_PIECES];
+  bool pieceActive[MAX_PIECES];
+  
+  for (int i = 0; i < MAX_PIECES; i++) pieceActive[i] = false;
+  
+  // Buffer de piezas aterrizadas
+  uint32_t landed[MATRIX_WIDTH * MATRIX_HEIGHT];
+  memset(landed, 0, sizeof(landed));
+  
+  for (int frame = 0; frame < duration; frame++) {
+    strip.clear();
+    
+    // Dibujar piezas aterrizadas
+    for (int y = 0; y < MATRIX_HEIGHT; y++) {
+      for (int x = 0; x < MATRIX_WIDTH; x++) {
+        uint32_t c = landed[y * MATRIX_WIDTH + x];
+        if (c) setPixelRaw(x, y, c);
+      }
+    }
+    
+    // Limpiar filas completas
+    for (int y = MATRIX_HEIGHT - 1; y >= 0; y--) {
+      bool full = true;
+      for (int x = 0; x < MATRIX_WIDTH; x++) {
+        if (!landed[y * MATRIX_WIDTH + x]) { full = false; break; }
+      }
+      if (full) {
+        // Flash de la fila
+        for (int x = 0; x < MATRIX_WIDTH; x++) {
+          setPixel(x, y, 255, 255, 255);
+        }
+        strip.show();
+        delay(50);
+        
+        // Mover todo hacia abajo
+        for (int yy = y; yy > 0; yy--) {
+          for (int x = 0; x < MATRIX_WIDTH; x++) {
+            landed[yy * MATRIX_WIDTH + x] = landed[(yy - 1) * MATRIX_WIDTH + x];
+          }
+        }
+        for (int x = 0; x < MATRIX_WIDTH; x++) landed[x] = 0;
+        y++; // Re-check this row
+      }
+    }
+    
+    // Lanzar nuevas piezas
+    for (int i = 0; i < MAX_PIECES; i++) {
+      if (!pieceActive[i] && random(0, 12) == 0) {
+        pieceActive[i] = true;
+        pieceType[i] = random(0, 7);
+        pieceX[i] = random(0, MATRIX_WIDTH - 3);
+        pieceY[i] = -2;
+      }
+    }
+    
+    // Mover y dibujar piezas activas
+    for (int i = 0; i < MAX_PIECES; i++) {
+      if (pieceActive[i]) {
+        const TetrisPiece &p = tetrisPieces[pieceType[i]];
+        
+        // Verificar si puede bajar
+        bool canMove = true;
+        for (int c = 0; c < 4; c++) {
+          int cx = pieceX[i] + p.cells[c][0];
+          int cy = pieceY[i] + p.cells[c][1] + 1;
+          if (cy >= MATRIX_HEIGHT) { canMove = false; break; }
+          if (cy >= 0 && cx >= 0 && cx < MATRIX_WIDTH && landed[cy * MATRIX_WIDTH + cx]) {
+            canMove = false; break;
+          }
+        }
+        
+        if (canMove) {
+          pieceY[i]++;
+        } else {
+          // Aterrizar pieza
+          for (int c = 0; c < 4; c++) {
+            int cx = pieceX[i] + p.cells[c][0];
+            int cy = pieceY[i] + p.cells[c][1];
+            if (cy >= 0 && cx >= 0 && cx < MATRIX_WIDTH && cy < MATRIX_HEIGHT) {
+              landed[cy * MATRIX_WIDTH + cx] = escalarColor(p.r, p.g, p.b);
+            }
+          }
+          pieceActive[i] = false;
+        }
+        
+        // Dibujar pieza activa
+        for (int c = 0; c < 4; c++) {
+          int cx = pieceX[i] + p.cells[c][0];
+          int cy = pieceY[i] + p.cells[c][1];
+          if (cx >= 0 && cx < MATRIX_WIDTH && cy >= 0 && cy < MATRIX_HEIGHT) {
+            setPixel(cx, cy, p.r, p.g, p.b);
+          }
+        }
+      }
+    }
+    
+    // Resetear si se llena demasiado (cada cierto tiempo)
+    if (frame % 200 == 199) {
+      memset(landed, 0, sizeof(landed));
+    }
+    
+    strip.show();
+    delay(60);
+  }
+}
+
+// ================================================================
+// 11. CYLON SCANNER - Ojo Cylon barriendo
+// ================================================================
+void cylonScanner(int duration) {
+  for (int frame = 0; frame < duration; frame++) {
+    // Atenuar todo
+    for (int i = 0; i < NUM_LEDS; i++) {
+      uint32_t c = strip.getPixelColor(i);
+      uint8_t r = ((c >> 16) & 0xFF) * 8 / 10;
+      uint8_t g = ((c >> 8) & 0xFF) * 8 / 10;
+      uint8_t b = (c & 0xFF) * 8 / 10;
+      strip.setPixelColor(i, strip.Color(r, g, b));
+    }
+    
+    // Posición del scanner (va y viene)
+    int scanY = (frame % (MATRIX_HEIGHT * 2));
+    if (scanY >= MATRIX_HEIGHT) scanY = MATRIX_HEIGHT * 2 - scanY - 1;
+    
+    // Efecto de ojo en la posición actual
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      // Centro más brillante, bordes más tenues
+      int distFromCenter = abs(x - MATRIX_WIDTH / 2);
+      uint8_t bright = 255 - distFromCenter * 40;
+      
+      setPixel(x, scanY, bright, 0, 0); // Rojo Cylon
+      
+      // Glow arriba y abajo
+      if (scanY > 0) setPixel(x, scanY - 1, bright / 3, 0, 0);
+      if (scanY < MATRIX_HEIGHT - 1) setPixel(x, scanY + 1, bright / 3, 0, 0);
+    }
+    
+    strip.show();
+    delay(12);
+  }
+}
+
+// ================================================================
+// 12. CONFETTI BURST - Explosión de confeti
+// ================================================================
+void confettiBurst(int duration) {
+  for (int frame = 0; frame < duration; frame++) {
+    // Atenuar gradualmente
+    for (int i = 0; i < NUM_LEDS; i++) {
+      uint32_t c = strip.getPixelColor(i);
+      uint8_t r = ((c >> 16) & 0xFF) * 9 / 10;
+      uint8_t g = ((c >> 8) & 0xFF) * 9 / 10;
+      uint8_t b = (c & 0xFF) * 9 / 10;
+      strip.setPixelColor(i, strip.Color(r, g, b));
+    }
+    
+    // Agregar 2-3 puntos de confeti aleatorios por frame
+    for (int c = 0; c < 3; c++) {
+      int x = random(0, MATRIX_WIDTH);
+      int y = random(0, MATRIX_HEIGHT);
+      uint8_t hue = random(0, 256);
+      setPixelRaw(x, y, hsvToRgb(hue, 255, 255));
+    }
+    
+    strip.show();
+    delay(15);
+  }
+}
+
+// ================================================================
+// 13. LAVA LAMP - Efecto lámpara de lava (blobs suaves)
+// ================================================================
+void lavaLamp(int duration) {
+  // Posiciones de blobs
+  #define NUM_BLOBS 6
+  float blobX[NUM_BLOBS], blobY[NUM_BLOBS];
+  float blobDX[NUM_BLOBS], blobDY[NUM_BLOBS];
+  uint8_t blobHue[NUM_BLOBS];
+  
+  for (int i = 0; i < NUM_BLOBS; i++) {
+    blobX[i] = random(0, MATRIX_WIDTH * 10) / 10.0;
+    blobY[i] = random(0, MATRIX_HEIGHT * 10) / 10.0;
+    blobDX[i] = (random(-10, 10)) / 30.0;
+    blobDY[i] = (random(-10, 10)) / 15.0;
+    blobHue[i] = random(0, 256);
+  }
+  
+  for (int frame = 0; frame < duration; frame++) {
+    strip.clear();
+    
+    // Mover blobs
+    for (int i = 0; i < NUM_BLOBS; i++) {
+      blobX[i] += blobDX[i];
+      blobY[i] += blobDY[i];
+      
+      if (blobX[i] <= 0 || blobX[i] >= MATRIX_WIDTH - 1) blobDX[i] = -blobDX[i];
+      if (blobY[i] <= 0 || blobY[i] >= MATRIX_HEIGHT - 1) blobDY[i] = -blobDY[i];
+      
+      blobHue[i] += 1; // Cambio lento de color
+    }
+    
+    // Renderizar basado en distancia a blobs
+    for (int y = 0; y < MATRIX_HEIGHT; y++) {
+      for (int x = 0; x < MATRIX_WIDTH; x++) {
+        float totalInfluence = 0;
+        float weightedHue = 0;
+        
+        for (int i = 0; i < NUM_BLOBS; i++) {
+          float dx = x - blobX[i];
+          float dy = y - blobY[i];
+          float dist = dx * dx + dy * dy + 1;
+          float influence = 50.0 / dist;
+          totalInfluence += influence;
+          weightedHue += blobHue[i] * influence;
+        }
+        
+        if (totalInfluence > 0.8) {
+          uint8_t hue = (uint8_t)(weightedHue / totalInfluence);
+          uint8_t bright = min(255, (int)(totalInfluence * 150));
+          setPixelRaw(x, y, hsvToRgb(hue, 255, bright));
+        }
+      }
+    }
+    
+    strip.show();
+    delay(30);
+  }
+}
+
+// ================================================================
+// 14. LIGHTNING STORM - Tormenta eléctrica
+// ================================================================
+void lightningStorm(int duration) {
+  for (int frame = 0; frame < duration; frame++) {
+    // Atenuar (cielo oscuro)
+    for (int i = 0; i < NUM_LEDS; i++) {
+      uint32_t c = strip.getPixelColor(i);
+      uint8_t r = ((c >> 16) & 0xFF) * 7 / 10;
+      uint8_t g = ((c >> 8) & 0xFF) * 7 / 10;
+      uint8_t b = (c & 0xFF) * 7 / 10;
+      strip.setPixelColor(i, strip.Color(r, g, b));
+    }
+    
+    // Fondo de nubes tenues
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      for (int y = 0; y < 5; y++) {
+        uint8_t cloudBright = random(5, 25);
+        setPixel(x, y, cloudBright, cloudBright, cloudBright + 10);
+      }
+    }
+    
+    // Relámpago aleatorio
+    if (random(0, 15) == 0) {
+      int startX = random(1, MATRIX_WIDTH - 1);
+      int currentX = startX;
+      
+      // Flash de iluminación general
+      for (int x = 0; x < MATRIX_WIDTH; x++) {
+        for (int y = 0; y < MATRIX_HEIGHT; y++) {
+          setPixel(x, y, 30, 30, 50);
+        }
+      }
+      
+      // Dibujar rayo zigzagueante
+      for (int y = 0; y < MATRIX_HEIGHT; y++) {
+        setPixel(currentX, y, 255, 255, 255); // Rayo blanco
+        
+        // Agregar brillo lateral
+        if (currentX > 0) setPixel(currentX - 1, y, 100, 100, 200);
+        if (currentX < MATRIX_WIDTH - 1) setPixel(currentX + 1, y, 100, 100, 200);
+        
+        // Zigzag aleatorio
+        if (random(0, 3) == 0) {
+          currentX += random(-1, 2);
+          currentX = constrain(currentX, 0, MATRIX_WIDTH - 1);
+        }
+        
+        // Ramificación ocasional
+        if (random(0, 8) == 0 && y > 10) {
+          int branchX = currentX;
+          for (int by = y; by < min(y + 8, MATRIX_HEIGHT); by++) {
+            branchX += random(0, 2) * (random(0, 2) == 0 ? 1 : -1);
+            branchX = constrain(branchX, 0, MATRIX_WIDTH - 1);
+            setPixel(branchX, by, 150, 150, 255);
+          }
+        }
+      }
+      
+      strip.show();
+      delay(50);
+      
+      // Segundo flash (doble relámpago)
+      if (random(0, 2) == 0) {
+        delay(80);
+        for (int y = 0; y < MATRIX_HEIGHT; y++) {
+          setPixel(currentX, y, 200, 200, 255);
+        }
+        strip.show();
+        delay(30);
+      }
+    }
+    
+    // Efecto de lluvia sutil
+    if (random(0, 3) == 0) {
+      int rx = random(0, MATRIX_WIDTH);
+      int ry = random(5, MATRIX_HEIGHT);
+      setPixel(rx, ry, 0, 0, 60);
+    }
+    
+    strip.show();
+    delay(30);
+  }
+}
+
+// ================================================================
+// 15. RAINBOW WAVE - Onda arcoíris fluida
+// ================================================================
+void rainbowWave(int duration) {
+  for (int frame = 0; frame < duration; frame++) {
+    for (int y = 0; y < MATRIX_HEIGHT; y++) {
+      for (int x = 0; x < MATRIX_WIDTH; x++) {
+        // Múltiples ondas superpuestas
+        uint8_t angle1 = (uint8_t)(y * 3 + frame * 2);
+        uint8_t angle2 = (uint8_t)(x * 32 + frame * 3);
+        
+        int wave = fastSin(angle1) + fastSin(angle2);
+        uint8_t hue = (uint8_t)(y * 3 + x * 10 + frame * 2);
+        uint8_t bright = (uint8_t)(150 + wave / 3);
+        
+        setPixelRaw(x, y, hsvToRgb(hue, 255, bright));
+      }
+    }
+    strip.show();
+    delay(15);
+  }
+}
+
+// ================================================================
+// 16. FIREWORKS SHOW - Fuegos artificiales mejorados
+// ================================================================
+void fireworksShow(int numShots) {
+  for (int shot = 0; shot < numShots; shot++) {
+    uint8_t fwHue = random(0, 256);
+    int targetX = random(1, MATRIX_WIDTH - 1);
+    int targetY = random(5, MATRIX_HEIGHT - 20);
+    
+    // Fase 1: Lanzamiento
+    for (int y = MATRIX_HEIGHT - 1; y > targetY; y -= 2) {
+      strip.clear();
+      setPixel(targetX, y, 255, 200, 100);
+      if (y + 1 < MATRIX_HEIGHT) setPixel(targetX, y + 1, 100, 80, 0);
+      if (y + 2 < MATRIX_HEIGHT) setPixel(targetX, y + 2, 40, 30, 0);
+      strip.show();
+      delay(15);
+    }
+    
+    // Fase 2: Explosión con partículas
+    #define NUM_PARTICLES 24
+    float px[NUM_PARTICLES], py[NUM_PARTICLES];
+    float pvx[NUM_PARTICLES], pvy[NUM_PARTICLES];
+    uint8_t pLife[NUM_PARTICLES];
+    uint8_t pHue[NUM_PARTICLES];
+    
+    for (int i = 0; i < NUM_PARTICLES; i++) {
+      px[i] = targetX;
+      py[i] = targetY;
+      float angle = (float)i / NUM_PARTICLES * 6.2832;
+      float speed = 0.5 + random(0, 20) / 10.0;
+      pvx[i] = cos(angle) * speed * 0.4;
+      pvy[i] = sin(angle) * speed;
+      pLife[i] = 200 + random(0, 55);
+      pHue[i] = fwHue + random(-20, 20);
+    }
+    
+    // Animar partículas
+    for (int f = 0; f < 40; f++) {
+      // Atenuar
+      for (int i = 0; i < NUM_LEDS; i++) {
+        uint32_t c = strip.getPixelColor(i);
+        uint8_t cr = ((c >> 16) & 0xFF) * 7 / 10;
+        uint8_t cg = ((c >> 8) & 0xFF) * 7 / 10;
+        uint8_t cb = (c & 0xFF) * 7 / 10;
+        strip.setPixelColor(i, strip.Color(cr, cg, cb));
+      }
+      
+      for (int i = 0; i < NUM_PARTICLES; i++) {
+        if (pLife[i] > 0) {
+          px[i] += pvx[i];
+          py[i] += pvy[i];
+          pvy[i] += 0.05; // Gravedad
+          pLife[i] -= 6;
+          
+          int sx = (int)px[i], sy = (int)py[i];
+          if (sx >= 0 && sx < MATRIX_WIDTH && sy >= 0 && sy < MATRIX_HEIGHT) {
+            uint8_t bright = pLife[i];
+            setPixelRaw(sx, sy, hsvToRgb(pHue[i], 200, bright));
+          }
+        }
+      }
+      
+      strip.show();
+      delay(25);
+    }
+    
+    delay(100);
+  }
+}
+
+// ================================================================
+// 17. BANDERA MEXICANA ONDEANDO
+// ================================================================
+void banderaMexicanaWave(int duration) {
+  for (int frame = 0; frame < duration; frame++) {
+    strip.clear();
+    
+    for (int y = 0; y < MATRIX_HEIGHT; y++) {
+      for (int x = 0; x < MATRIX_WIDTH; x++) {
+        // Efecto de ondeo
+        float wave = sin((y * 0.15) + (frame * 0.2)) * 1.5;
+        int section = (int)((y + wave) * 3.0 / MATRIX_HEIGHT);
+        section = constrain(section, 0, 2);
+        
+        // Brillo variable para efecto de tela
+        uint8_t fabricBright = 180 + (int)(40 * sin(y * 0.3 + frame * 0.1));
+        
+        switch (section) {
+          case 0: // Verde
+            setPixel(x, y, 0, fabricBright, 0);
+            break;
+          case 1: // Blanco
+            setPixel(x, y, fabricBright, fabricBright, fabricBright);
+            break;
+          case 2: // Rojo
+            setPixel(x, y, fabricBright, 0, 0);
+            break;
+        }
+      }
+    }
+    
+    strip.show();
+    delay(30);
+  }
+}
+
+// ================================================================
+// 18. GAME OF LIFE - Juego de la vida de Conway
+// ================================================================
+void gameOfLife(int generations) {
+  bool grid[MATRIX_WIDTH][MATRIX_HEIGHT];
+  bool newGrid[MATRIX_WIDTH][MATRIX_HEIGHT];
+  
+  // Inicializar con patrón aleatorio
+  for (int x = 0; x < MATRIX_WIDTH; x++) {
+    for (int y = 0; y < MATRIX_HEIGHT; y++) {
+      grid[x][y] = random(0, 4) == 0; // ~25% de celdas vivas
+    }
+  }
+  
+  uint8_t hueOffset = 0;
+  
+  for (int gen = 0; gen < generations; gen++) {
+    strip.clear();
+    
+    // Dibujar generación actual
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      for (int y = 0; y < MATRIX_HEIGHT; y++) {
+        if (grid[x][y]) {
+          uint8_t hue = (uint8_t)(hueOffset + y * 3);
+          setPixelRaw(x, y, hsvToRgb(hue, 255, 200));
+        }
+      }
+    }
+    
+    strip.show();
+    delay(80);
+    
+    // Calcular siguiente generación
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      for (int y = 0; y < MATRIX_HEIGHT; y++) {
+        int neighbors = 0;
+        for (int dx = -1; dx <= 1; dx++) {
+          for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0) continue;
+            int nx = (x + dx + MATRIX_WIDTH) % MATRIX_WIDTH;
+            int ny = (y + dy + MATRIX_HEIGHT) % MATRIX_HEIGHT;
+            if (grid[nx][ny]) neighbors++;
+          }
+        }
+        
+        if (grid[x][y]) {
+          newGrid[x][y] = (neighbors == 2 || neighbors == 3);
+        } else {
+          newGrid[x][y] = (neighbors == 3);
+        }
+      }
+    }
+    
+    // Copiar nueva generación
+    memcpy(grid, newGrid, sizeof(grid));
+    hueOffset += 2;
+    
+    // Re-sembrar si se estanca
+    if (gen % 50 == 49) {
+      for (int i = 0; i < 40; i++) {
+        grid[random(0, MATRIX_WIDTH)][random(0, MATRIX_HEIGHT)] = true;
+      }
+    }
+  }
+}
+
+// ================================================================
+// 19. SNAKE ANIMATION - Serpiente arcoíris moviéndose
+// ================================================================
+void snakeAnimation(int duration) {
+  #define SNAKE_LEN 30
+  int snakeX[SNAKE_LEN], snakeY[SNAKE_LEN];
+  int dirX = 0, dirY = 1;
+  
+  // Inicializar serpiente
+  for (int i = 0; i < SNAKE_LEN; i++) {
+    snakeX[i] = MATRIX_WIDTH / 2;
+    snakeY[i] = i;
+  }
+  
+  for (int frame = 0; frame < duration; frame++) {
+    strip.clear();
+    
+    // Mover cabeza
+    int headX = snakeX[0] + dirX;
+    int headY = snakeY[0] + dirY;
+    
+    // Rebotar en bordes
+    if (headX < 0 || headX >= MATRIX_WIDTH) {
+      dirX = -dirX;
+      headX = snakeX[0] + dirX;
+      // Cambiar dirección vertical aleatoriamente
+      if (random(0, 2) == 0) dirY = random(0, 2) == 0 ? 1 : -1;
+    }
+    if (headY < 0 || headY >= MATRIX_HEIGHT) {
+      dirY = -dirY;
+      headY = snakeY[0] + dirY;
+      // Cambiar dirección horizontal aleatoriamente
+      if (random(0, 2) == 0) dirX = random(-1, 2);
+    }
+    
+    // Cambio de dirección aleatorio
+    if (random(0, 20) == 0) {
+      dirX = random(-1, 2);
+      dirY = random(-1, 2);
+      if (dirX == 0 && dirY == 0) dirY = 1;
+    }
+    
+    // Desplazar cuerpo
+    for (int i = SNAKE_LEN - 1; i > 0; i--) {
+      snakeX[i] = snakeX[i - 1];
+      snakeY[i] = snakeY[i - 1];
+    }
+    snakeX[0] = constrain(headX, 0, MATRIX_WIDTH - 1);
+    snakeY[0] = constrain(headY, 0, MATRIX_HEIGHT - 1);
+    
+    // Dibujar serpiente con degradado arcoíris
+    for (int i = 0; i < SNAKE_LEN; i++) {
+      uint8_t hue = (uint8_t)(frame * 3 + i * 8);
+      uint8_t bright = 255 - (i * 200 / SNAKE_LEN);
+      setPixelRaw(snakeX[i], snakeY[i], hsvToRgb(hue, 255, bright));
+    }
+    
+    // Ojos de la serpiente (cabeza)
+    setPixel(snakeX[0], snakeY[0], 255, 255, 255);
+    
+    strip.show();
+    delay(40);
+  }
+}
+
+// ================================================================
+// 20. RIPPLE EFFECT - Gotas de agua con ondas concéntricas
+// ================================================================
+void rippleEffect(int duration) {
+  #define MAX_RIPPLES 5
+  int rippleCX[MAX_RIPPLES], rippleCY[MAX_RIPPLES];
+  int rippleRadius[MAX_RIPPLES];
+  uint8_t rippleHue[MAX_RIPPLES];
+  bool rippleActive[MAX_RIPPLES];
+  
+  for (int i = 0; i < MAX_RIPPLES; i++) rippleActive[i] = false;
+  
+  for (int frame = 0; frame < duration; frame++) {
+    strip.clear();
+    
+    // Lanzar nueva onda
+    if (random(0, 15) == 0) {
+      for (int i = 0; i < MAX_RIPPLES; i++) {
+        if (!rippleActive[i]) {
+          rippleActive[i] = true;
+          rippleCX[i] = random(0, MATRIX_WIDTH);
+          rippleCY[i] = random(0, MATRIX_HEIGHT);
+          rippleRadius[i] = 0;
+          rippleHue[i] = random(0, 256);
+          break;
+        }
+      }
+    }
+    
+    // Dibujar y expandir ondas
+    for (int i = 0; i < MAX_RIPPLES; i++) {
+      if (rippleActive[i]) {
+        for (int y = 0; y < MATRIX_HEIGHT; y++) {
+          for (int x = 0; x < MATRIX_WIDTH; x++) {
+            float dx = x - rippleCX[i];
+            float dy = (y - rippleCY[i]) * 0.3; // Comprimir en Y para efecto elíptico
+            float dist = sqrt(dx * dx + dy * dy);
+            int diff = abs((int)dist - rippleRadius[i]);
+            
+            if (diff < 2) {
+              uint8_t bright = (2 - diff) * 120;
+              bright = (bright * (40 - min(40, rippleRadius[i]))) / 40; // Fade con distancia
+              
+              if (bright > 5) {
+                uint32_t existing = strip.getPixelColor(getPixelIndex(x, y));
+                uint8_t er = (existing >> 16) & 0xFF;
+                uint8_t eg = (existing >> 8) & 0xFF;
+                uint8_t eb = existing & 0xFF;
+                
+                uint32_t newC = hsvToRgb(rippleHue[i], 255, bright);
+                uint8_t nr = (newC >> 16) & 0xFF;
+                uint8_t ng = (newC >> 8) & 0xFF;
+                uint8_t nb = newC & 0xFF;
+                
+                int idx = getPixelIndex(x, y);
+                if (idx >= 0) {
+                  strip.setPixelColor(idx, strip.Color(
+                    min(255, er + nr), min(255, eg + ng), min(255, eb + nb)));
+                }
+              }
+            }
+          }
+        }
+        
+        rippleRadius[i]++;
+        if (rippleRadius[i] > 45) rippleActive[i] = false;
+      }
+    }
+    
+    strip.show();
+    delay(25);
+  }
+}
+
+// ================================================================
+// 21. COUNTDOWN - Cuenta regresiva gigante
+// ================================================================
+// Dígitos grandes 8x8 (solo 0-9)
+const uint8_t bigDigit[10][8] = {
+  {0x3C,0x42,0x42,0x42,0x42,0x42,0x42,0x3C}, // 0
+  {0x10,0x30,0x10,0x10,0x10,0x10,0x10,0x38}, // 1
+  {0x3C,0x42,0x02,0x04,0x08,0x10,0x20,0x7E}, // 2
+  {0x3C,0x42,0x02,0x1C,0x02,0x02,0x42,0x3C}, // 3
+  {0x04,0x0C,0x14,0x24,0x44,0x7E,0x04,0x04}, // 4
+  {0x7E,0x40,0x40,0x7C,0x02,0x02,0x42,0x3C}, // 5
+  {0x1C,0x20,0x40,0x7C,0x42,0x42,0x42,0x3C}, // 6
+  {0x7E,0x02,0x04,0x08,0x10,0x10,0x10,0x10}, // 7
+  {0x3C,0x42,0x42,0x3C,0x42,0x42,0x42,0x3C}, // 8
+  {0x3C,0x42,0x42,0x42,0x3E,0x02,0x04,0x38}  // 9
+};
+
+void drawBigDigit(int digit, int offsetY, uint8_t r, uint8_t g, uint8_t b) {
+  if (digit < 0 || digit > 9) return;
+  for (int row = 0; row < 8; row++) {
+    for (int col = 0; col < 8; col++) {
+      if (bigDigit[digit][row] & (1 << (7 - col))) {
+        int py = offsetY + row;
+        if (col >= 0 && col < MATRIX_WIDTH && py >= 0 && py < MATRIX_HEIGHT) {
+          setPixel(col, py, r, g, b);
+        }
+      }
+    }
+  }
+}
+
+void countdown(int from) {
+  for (int num = from; num >= 0; num--) {
+    // Animación de zoom-in
+    for (int phase = 0; phase < 15; phase++) {
+      strip.clear();
+      
+      uint8_t bright = phase * 17;
+      uint8_t hue = num * 25;
+      uint32_t col = hsvToRgb(hue, 255, bright);
+      uint8_t r = (col >> 16) & 0xFF;
+      uint8_t g = (col >> 8) & 0xFF;
+      uint8_t b = col & 0xFF;
+      
+      // Dibujar número en múltiples posiciones a lo largo de la tira
+      for (int rep = 0; rep < 8; rep++) {
+        drawBigDigit(num, rep * 10 + 1, r, g, b);
+      }
+      
+      strip.show();
+      delay(30);
+    }
+    
+    // Flash al cambiar
+    if (num == 0) {
+      for (int flash = 0; flash < 5; flash++) {
+        for (int i = 0; i < NUM_LEDS; i++) {
+          strip.setPixelColor(i, escalarColor(255, 255, 255));
+        }
+        strip.show();
+        delay(60);
+        strip.clear();
+        strip.show();
+        delay(60);
+      }
+    }
+    
+    delay(500);
+  }
+}
+
+// ================================================================
+// 22. WARP SPEED - Efecto velocidad warp (estrellas acercándose)
+// ================================================================
+void warpSpeed(int duration) {
+  #define MAX_WARP_STARS 30
+  float wsX[MAX_WARP_STARS], wsY[MAX_WARP_STARS];
+  float wsSpeed[MAX_WARP_STARS];
+  bool wsActive[MAX_WARP_STARS];
+  
+  int centerX = MATRIX_WIDTH / 2;
+  int centerY = MATRIX_HEIGHT / 2;
+  
+  for (int i = 0; i < MAX_WARP_STARS; i++) wsActive[i] = false;
+  
+  for (int frame = 0; frame < duration; frame++) {
+    // Atenuar
+    for (int i = 0; i < NUM_LEDS; i++) {
+      uint32_t c = strip.getPixelColor(i);
+      uint8_t r = ((c >> 16) & 0xFF) * 6 / 10;
+      uint8_t g = ((c >> 8) & 0xFF) * 6 / 10;
+      uint8_t b = (c & 0xFF) * 6 / 10;
+      strip.setPixelColor(i, strip.Color(r, g, b));
+    }
+    
+    // Crear nuevas estrellas desde el centro
+    for (int i = 0; i < MAX_WARP_STARS; i++) {
+      if (!wsActive[i] && random(0, 3) == 0) {
+        wsActive[i] = true;
+        float angle = random(0, 628) / 100.0;
+        wsX[i] = centerX + cos(angle) * 0.5;
+        wsY[i] = centerY + sin(angle) * 0.5;
+        wsSpeed[i] = 0.3;
+      }
+    }
+    
+    // Mover y dibujar estrellas
+    for (int i = 0; i < MAX_WARP_STARS; i++) {
+      if (wsActive[i]) {
+        float dx = wsX[i] - centerX;
+        float dy = wsY[i] - centerY;
+        float dist = sqrt(dx * dx + dy * dy);
+        
+        if (dist > 0.1) {
+          wsX[i] += (dx / dist) * wsSpeed[i];
+          wsY[i] += (dy / dist) * wsSpeed[i];
+          wsSpeed[i] *= 1.08; // Aceleración
+        }
+        
+        int sx = (int)wsX[i], sy = (int)wsY[i];
+        if (sx >= 0 && sx < MATRIX_WIDTH && sy >= 0 && sy < MATRIX_HEIGHT) {
+          uint8_t bright = min(255, (int)(dist * 20 + 50));
+          setPixel(sx, sy, bright, bright, bright + 30);
+        } else {
+          wsActive[i] = false;
+        }
+      }
+    }
+    
+    strip.show();
+    delay(15);
+  }
+}
+
+// ================================================================
+// TRANSICIONES ENTRE DEMOS
+// ================================================================
+void transitionWipe(uint8_t r, uint8_t g, uint8_t b, int delayTime) {
+  for (int y = 0; y < MATRIX_HEIGHT; y++) {
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      setPixel(x, y, r, g, b);
+    }
+    strip.show();
+    delay(delayTime);
+  }
+  delay(100);
+  for (int y = 0; y < MATRIX_HEIGHT; y++) {
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      setPixel(x, y, 0, 0, 0);
+    }
+    strip.show();
+    delay(delayTime);
+  }
+}
+
+void transitionSparkle(int duration) {
+  for (int i = 0; i < duration; i++) {
+    int x = random(0, MATRIX_WIDTH);
+    int y = random(0, MATRIX_HEIGHT);
+    setPixel(x, y, 255, 255, 255);
+    strip.show();
+    delay(5);
+    setPixel(x, y, 0, 0, 0);
+  }
+  strip.clear();
+  strip.show();
+}
+
+// ================================================================
+// SETUP
+// ================================================================
+void setup() {
+  strip.begin();
+  strip.setBrightness(255); // Brillo máximo (escalado por BRILLO_GENERAL)
+  strip.clear();
+  strip.show();
+  
+  randomSeed(analogRead(A0)); // Semilla aleatoria
+  
+  Serial.begin(115200);
+  Serial.println(F("╔══════════════════════════════════════╗"));
+  Serial.println(F("║  UNIT ELECTRONICS - TALENT LAND 2026 ║"));
+  Serial.println(F("║  WS2812B 8x80 RGB LED Matrix Demo   ║"));
+  Serial.println(F("║  640 LEDs - Demostraciones Visuales  ║"));
+  Serial.println(F("╚══════════════════════════════════════╝"));
+}
+
+// ================================================================
+// LOOP PRINCIPAL - SECUENCIA DE DEMOS PARA TALENT LAND
+// ================================================================
+void loop() {
+  
+  // ──── INTRO: Cuenta regresiva ────
+  Serial.println(F("[DEMO] Countdown"));
+  countdown(5);
+  
+  // ──── MENSAJE: TALENT LAND ────
+  Serial.println(F("[MSG] TALENT LAND"));
+  rainbowScrollText(reverseString("  TALENT LAND 2026  "), 18);
+  
+  // ──── DEMO 1: Matrix Rain ────
+  Serial.println(F("[DEMO] Matrix Rain"));
+  transitionWipe(0, 80, 0, 3);
+  matrixRain(200);
+  
+  // ──── MENSAJE: UNIT ELECTRONICS ────
+  Serial.println(F("[MSG] UNIT ELECTRONICS"));
+  scrollText(reverseString("   UNIT ELECTRONICS"), escalarColor(255, 60, 0), 20);
+
+  // ──── DEMO 2: Plasma ────
+  Serial.println(F("[DEMO] Plasma Effect"));
+  plasmaEffect(200);
+  
+  // ──── MENSAJE: ECOSISTEMA DEVLAB ────
+  scrollText(reverseString(" ECOSISTEMA DEVLAB "), escalarColor(0, 255, 100), 20);
+  
+  // ──── DEMO 3: Fuego ────
+  Serial.println(F("[DEMO] Fire Effect"));
+  fireEffect(250);
+  
+  // ──── TRANSICIÓN ────
+  transitionSparkle(100);
+  
+  // ──── DEMO 4: Estrellas Fugaces ────
+  Serial.println(F("[DEMO] Shooting Stars"));
+  shootingStars(200);
+  
+  // ──── MENSAJE ────
+  rainbowScrollText(reverseString("  HECHO EN MEXICO!  "), 18);
+  
+  // ──── DEMO 5: Espiral Hipnótica ────
+  Serial.println(F("[DEMO] Hypnotic Spiral"));
+  hypnoticSpiral(200);
+  
+  // ──── DEMO 6: Corazón Latiendo ────
+  Serial.println(F("[DEMO] Beating Heart"));
+  beatingHeart(4);
+  
+  // ──── MENSAJE ────
+  scrollText(reverseString("  OPEN HARDWARE  "), escalarColor(255, 0, 150), 20);
+  
+  // ──── DEMO 7: ADN Helix ────
+  Serial.println(F("[DEMO] DNA Helix"));
+  dnaHelix(200);
+  
+  // ──── DEMO 8: Pulse Wave ────
+  Serial.println(F("[DEMO] Pulse Wave"));
+  pulseWave(150);
+  
+  // ──── MENSAJE ────
+  scrollText(reverseString("  WS2812B  8X80  "), escalarColor(0, 200, 255), 20);
+  
+  // ──── DEMO 9: VU Meter ────
+  Serial.println(F("[DEMO] VU Meter"));
+  vuMeter(200);
+  
+  // ──── TRANSICIÓN ────
+  transitionWipe(0, 0, 100, 3);
+  
+  // ──── DEMO 10: Tetris ────
+  Serial.println(F("[DEMO] Tetris Rain"));
+  tetrisRain(200);
+  
+  // ──── MENSAJE ────
+  rainbowScrollText(reverseString("  640 RGB LEDS  "), 18);
+  
+  // ──── DEMO 11: Cylon Scanner ────
+  Serial.println(F("[DEMO] Cylon Scanner"));
+  cylonScanner(300);
+  
+  // ──── DEMO 12: Confetti ────
+  Serial.println(F("[DEMO] Confetti Burst"));
+  confettiBurst(200);
+  
+  // ──── MENSAJE ────
+  scrollText(reverseString("  VISITANOS!  "), escalarColor(255, 255, 0), 20);
+  
+  // ──── DEMO 13: Lava Lamp ────
+  Serial.println(F("[DEMO] Lava Lamp"));
+  lavaLamp(150);
+  
+  // ──── DEMO 14: Lightning ────
+  Serial.println(F("[DEMO] Lightning Storm"));
+  lightningStorm(200);
+  
+  // ──── TRANSICIÓN ────
+  transitionSparkle(80);
+  
+  // ──── DEMO 15: Rainbow Wave ────
+  Serial.println(F("[DEMO] Rainbow Wave"));
+  rainbowWave(200);
+  
+  // ──── DEMO 16: Warp Speed ────
+  Serial.println(F("[DEMO] Warp Speed"));
+  warpSpeed(200);
+  
+  // ──── DEMO 17: Game of Life ────
+  Serial.println(F("[DEMO] Game of Life"));
+  gameOfLife(100);
+  
+  // ──── DEMO 18: Snake ────
+  Serial.println(F("[DEMO] Snake Animation"));
+  snakeAnimation(200);
+  
+  // ──── DEMO 19: Ripple ────
+  Serial.println(F("[DEMO] Ripple Effect"));
+  rippleEffect(200);
+  
+  // ──── BANDERA MEXICANA ────
+  Serial.println(F("[DEMO] Bandera Mexicana"));
+  banderaMexicanaWave(150);
+  
+  // ──── GRAN FINAL: FUEGOS ARTIFICIALES ────
+  Serial.println(F("[DEMO] Fireworks Show - GRAN FINAL"));
+  rainbowScrollText(reverseString("  UNIT ELECTRONICS  "), 15);
+  fireworksShow(8);
+  
+  // ──── MENSAJE FINAL ────
+  scrollText(reverseString("  TALENT LAND 2026  "), escalarColor(255, 200, 0), 18);
+  rainbowScrollText(reverseString("  GRACIAS!  "), 20);
+  
+  // Pausa antes de repetir
+  delay(1000);
+  
+  Serial.println(F("=== REINICIANDO DEMO ==="));
+}
